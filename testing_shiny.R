@@ -324,7 +324,6 @@ server <- function(input, output, session) {
     
     # Assign colors to all countries
     unique_countries <- unique(corr_by_country$Location)
-    extra_colors <- c("#F4A261", "#E76F51", "#8338EC", "#3A86FF", "#FB5607", "#06FFA5", "#FFBE0B")
     
     color_vector <- sapply(unique_countries, function(country) {
       if (country %in% names(country_color_map)) {
