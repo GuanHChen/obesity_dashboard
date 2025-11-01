@@ -4,8 +4,6 @@ library(tidyverse)
 library(plotly)
 library(scales)
 
-# test comment
-
 # --- Load data ---
 bmi_data <- read_csv("cleaned_merged_data.csv")
 gdp <- read_csv("merged_data_with_gdp.csv")
@@ -34,19 +32,23 @@ ui <- fluidPage(
         condition = "input.vizType == 'timeseries'",
         checkboxGroupInput("tsCountries",
                            "Select Countries:",
-                           choices = NULL,  # Will be populated from data
+                           choices = NULL,
                            selected = NULL),
         selectInput("tsVariable",
                     "Select Variable:",
                     choices = c("Overweight Rate" = "OverweightRate",
                                 "Alcohol Consumption" = "Alcohol_Consumption",
-                                "GDP per Capita" = "GDP_per_capita"))
+                                "GDP per Capita" = "GDP_per_capita")),
+        conditionalPanel(
+          condition = "input.tsVariable != 'GDP_per_capita'",
+          checkboxInput("showCI", "Show Confidence Intervals", value = TRUE)
+        )
       ),
       conditionalPanel(
         condition = "input.vizType == 'comparison'",
         selectInput("compYear",
                     "Select Year:",
-                    choices = NULL,  # Will be populated from data
+                    choices = NULL,
                     selected = NULL),
         selectInput("compVariable",
                     "Compare by:",
@@ -131,9 +133,9 @@ server <- function(input, output, session) {
       marker = list(
         opacity = 0.75,
         line = list(width = 2, color = '#FFFFFF'),
-        sizemode = 'diameter'  # Use diameter for more intuitive sizing
+        sizemode = 'diameter'
       ),
-      sizes = c(15, 65)  # Set min and max sizes explicitly
+      sizes = c(15, 65)
     ) %>%
       layout(
         title = list(
@@ -163,8 +165,8 @@ server <- function(input, output, session) {
         paper_bgcolor = '#FFFFFF'
       ) %>%
       animation_opts(
-        frame = 1200,        # Slightly slower for better viewing
-        transition = 300,    # Smooth transitions between frames
+        frame = 1200,
+        transition = 300,
         redraw = FALSE
       ) %>%
       animation_slider(
@@ -189,9 +191,88 @@ server <- function(input, output, session) {
       input$tsVariable == "GDP_per_capita" ~ "GDP per Capita (USD)"
     )
     
-    plot_ly(data_filtered, x = ~Year, y = ~get(input$tsVariable), 
-            color = ~Location, type = 'scatter', mode = 'lines+markers',
-            line = list(width = 3), marker = list(size = 8)) %>%
+    # Determine CI columns based on variable
+    ci_lower <- case_when(
+      input$tsVariable == "OverweightRate" ~ "OverweightRate_Lower",
+      input$tsVariable == "Alcohol_Consumption" ~ "Alcohol_Lower_CI",
+      input$tsVariable == "GDP_per_capita" ~ NA_character_
+    )
+    
+    ci_upper <- case_when(
+      input$tsVariable == "OverweightRate" ~ "OverweightRate_Upper",
+      input$tsVariable == "Alcohol_Consumption" ~ "FactValueNumericHigh_y",
+      input$tsVariable == "GDP_per_capita" ~ NA_character_
+    )
+    
+    # Define custom color palette
+    custom_colors <- c("#E63946", "#457B9D", "#2A9D8F", "#F4A261", "#E76F51", 
+                       "#8338EC", "#3A86FF", "#FB5607", "#06FFA5", "#FFBE0B")
+    
+    # Create base plot
+    p <- plot_ly()
+    
+    # Add traces for each country
+    for (i in seq_along(input$tsCountries)) {
+      country <- input$tsCountries[i]
+      country_data <- data_filtered %>% filter(Location == country)
+      country_color <- custom_colors[((i - 1) %% length(custom_colors)) + 1]
+      
+      # Add confidence interval if available and checkbox is selected
+      show_ci <- if(input$tsVariable == "GDP_per_capita") FALSE else isTRUE(input$showCI)
+      
+      if (show_ci && !is.na(ci_lower) && !is.na(ci_upper)) {
+        # Add CI ribbon
+        p <- p %>%
+          add_trace(
+            data = country_data,
+            x = ~Year,
+            y = ~get(ci_upper),
+            type = 'scatter',
+            mode = 'lines',
+            line = list(width = 0),
+            showlegend = FALSE,
+            name = paste(country, "Upper"),
+            hoverinfo = 'skip',
+            legendgroup = country
+          ) %>%
+          add_trace(
+            data = country_data,
+            x = ~Year,
+            y = ~get(ci_lower),
+            type = 'scatter',
+            mode = 'lines',
+            fill = 'tonexty',
+            fillcolor = scales::alpha(country_color, 0.2),
+            line = list(width = 0),
+            showlegend = FALSE,
+            name = paste(country, "Lower"),
+            hoverinfo = 'skip',
+            legendgroup = country
+          )
+      }
+      
+      # Add main line with markers
+      p <- p %>%
+        add_trace(
+          data = country_data,
+          x = ~Year,
+          y = ~get(input$tsVariable),
+          type = 'scatter',
+          mode = 'lines+markers',
+          name = country,
+          line = list(width = 3, color = country_color),
+          marker = list(size = 8, color = country_color),
+          legendgroup = country,
+          hovertemplate = paste0(
+            "<b>", country, "</b><br>",
+            "Year: %{x}<br>",
+            var_label, ": %{y:.2f}<br>",
+            "<extra></extra>"
+          )
+        )
+    }
+    
+    p %>%
       layout(
         title = paste("<b>", var_label, "Over Time</b>"),
         xaxis = list(title = "<b>Year</b>"),
