@@ -4,6 +4,8 @@ library(tidyverse)
 library(plotly)
 library(scales)
 
+# test comment
+
 # --- Load data ---
 bmi_data <- read_csv("cleaned_merged_data.csv")
 gdp <- read_csv("merged_data_with_gdp.csv")
