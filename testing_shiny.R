@@ -49,12 +49,7 @@ ui <- fluidPage(
         selectInput("compYear",
                     "Select Year:",
                     choices = NULL,
-                    selected = NULL),
-        selectInput("compVariable",
-                    "Compare by:",
-                    choices = c("Overweight Rate" = "OverweightRate",
-                                "Alcohol Consumption" = "Alcohol_Consumption",
-                                "GDP per Capita" = "GDP_per_capita"))
+                    selected = NULL)
       )
     ),
     
@@ -112,6 +107,30 @@ server <- function(input, output, session) {
         Overweight_scaled = 15 + (Overweight_normalized * 50 * 1.2)
       )
     
+    # Define fixed colors for specific countries
+    country_color_map <- c(
+      "United States of America" = "#E63946",
+      "Germany" = "#457B9D",
+      "Japan" = "#2A9D8F"
+    )
+    
+    # Assign colors to all countries in the data
+    unique_countries <- sort(unique(data_all$Location))
+    extra_colors <- c("#F4A261", "#E76F51", "#8338EC", "#3A86FF", "#FB5607", "#06FFA5", "#FFBE0B")
+    
+    color_vector <- setNames(
+      sapply(unique_countries, function(country) {
+        if (country %in% names(country_color_map)) {
+          unname(country_color_map[country])
+        } else {
+          other_countries <- unique_countries[!unique_countries %in% names(country_color_map)]
+          idx <- which(other_countries == country)
+          extra_colors[((idx - 1) %% length(extra_colors)) + 1]
+        }
+      }),
+      unique_countries
+    )
+    
     # --- Create interactive animated bubble chart ---
     plot_ly(
       data = data_all,
@@ -119,6 +138,7 @@ server <- function(input, output, session) {
       y = ~GDP_per_capita,
       size = ~Overweight_scaled,
       color = ~Location,
+      colors = color_vector,
       frame = ~Year,
       text = ~paste0(
         "<b>", Location, "</b><br>",
@@ -296,11 +316,32 @@ server <- function(input, output, session) {
       ) %>%
       pivot_longer(cols = -Location, names_to = "Relationship", values_to = "Correlation")
     
+    # Define fixed colors for specific countries
+    country_color_map <- c(
+      "United States of America" = "#E63946",
+      "Germany" = "#457B9D",
+      "Japan" = "#2A9D8F"
+    )
+    
+    # Assign colors to all countries
+    unique_countries <- unique(corr_by_country$Location)
+    extra_colors <- c("#F4A261", "#E76F51", "#8338EC", "#3A86FF", "#FB5607", "#06FFA5", "#FFBE0B")
+    
+    color_vector <- sapply(unique_countries, function(country) {
+      if (country %in% names(country_color_map)) {
+        return(unname(country_color_map[country]))
+      } else {
+        other_idx <- sum(!unique_countries[1:which(unique_countries == country)] %in% names(country_color_map))
+        return(extra_colors[((other_idx - 1) %% length(extra_colors)) + 1])
+      }
+    })
+    
     # Create grouped bar chart
     plot_ly(corr_by_country, 
             x = ~Relationship, 
             y = ~Correlation, 
             color = ~Location,
+            colors = color_vector,
             type = 'bar',
             text = ~round(Correlation, 2),
             textposition = 'outside',
@@ -329,29 +370,82 @@ server <- function(input, output, session) {
   })
   
   output$comparisonPlot <- renderPlotly({
-    req(input$vizType == "comparison", input$compYear, input$compVariable)
+    req(input$vizType == "comparison", input$compYear)
     
     data_filtered <- gdp %>%
       filter(Year == input$compYear) %>%
-      drop_na(Location, !!sym(input$compVariable)) %>%
-      arrange(desc(!!sym(input$compVariable)))
+      drop_na(Location, OverweightRate, Alcohol_Consumption)
     
-    var_label <- case_when(
-      input$compVariable == "OverweightRate" ~ "Overweight Rate (%)",
-      input$compVariable == "Alcohol_Consumption" ~ "Alcohol Consumption (%)",
-      input$compVariable == "GDP_per_capita" ~ "GDP per Capita (USD)"
-    )
+    # Define fixed colors for specific countries
+    get_country_color <- function(country) {
+      country_color_map <- c(
+        "United States of America" = "#E63946",
+        "Germany" = "#457B9D",
+        "Japan" = "#2A9D8F"
+      )
+      
+      if (country %in% names(country_color_map)) {
+        return(country_color_map[country])
+      } else {
+        extra_colors <- c("#F4A261", "#E76F51", "#8338EC", "#3A86FF", "#FB5607", "#06FFA5", "#FFBE0B")
+        other_countries <- setdiff(unique(data_filtered$Location), names(country_color_map))
+        idx <- which(other_countries == country)
+        return(extra_colors[((idx - 1) %% length(extra_colors)) + 1])
+      }
+    }
     
-    plot_ly(data_filtered, x = ~get(input$compVariable), y = ~reorder(Location, get(input$compVariable)),
-            type = 'bar', orientation = 'h',
-            marker = list(color = '#1f77b4'),
-            text = ~round(get(input$compVariable), 1),
-            textposition = 'outside') %>%
+    # Create color vectors for each country
+    overweight_colors <- sapply(data_filtered$Location, function(c) {
+      scales::alpha(get_country_color(c), 0.8)
+    })
+    
+    alcohol_colors <- sapply(data_filtered$Location, function(c) {
+      scales::alpha(get_country_color(c), 0.5)
+    })
+    
+    # Create side-by-side grouped bar chart
+    plot_ly(data_filtered) %>%
+      add_trace(
+        x = ~Location,
+        y = ~OverweightRate,
+        type = 'bar',
+        name = 'Overweight Rate (%)',
+        marker = list(color = overweight_colors),
+        text = ~round(OverweightRate, 1),
+        textposition = 'outside',
+        hovertemplate = paste0(
+          "<b>%{x}</b><br>",
+          "Overweight Rate: %{y:.1f}%<br>",
+          "<extra></extra>"
+        )
+      ) %>%
+      add_trace(
+        x = ~Location,
+        y = ~Alcohol_Consumption,
+        type = 'bar',
+        name = 'Alcohol Consumption (%)',
+        marker = list(color = alcohol_colors),
+        text = ~round(Alcohol_Consumption, 1),
+        textposition = 'outside',
+        hovertemplate = paste0(
+          "<b>%{x}</b><br>",
+          "Alcohol Consumption: %{y:.1f}%<br>",
+          "<extra></extra>"
+        )
+      ) %>%
       layout(
-        title = paste0("<b>", var_label, " by Country (", input$compYear, ")</b>"),
-        xaxis = list(title = paste0("<b>", var_label, "</b>")),
-        yaxis = list(title = ""),
-        plot_bgcolor = '#F9F9F9'
+        title = paste0("<b>Overweight Rate & Alcohol Consumption by Country (", input$compYear, ")</b>"),
+        xaxis = list(title = "<b>Country</b>"),
+        yaxis = list(title = "<b>Percentage (%)</b>"),
+        barmode = 'group',
+        plot_bgcolor = '#F9F9F9',
+        legend = list(
+          orientation = "h",
+          x = 0.5,
+          xanchor = "center",
+          y = -0.2,
+          yanchor = "top"
+        )
       )
   })
   
