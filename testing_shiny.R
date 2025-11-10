@@ -12,6 +12,9 @@ gdp <- read_csv("merged_data_with_gdp.csv")
 ui <- fluidPage(
   titlePanel("Global Overweight, GDP, and Alcohol Consumption Visualization"),
   
+  # Space under title
+  div(style = "margin-top: 30px;"),
+  
   sidebarLayout(
     sidebarPanel(
       h4("Select Visualization:"),
@@ -162,6 +165,7 @@ server <- function(input, output, session) {
           x = 0.5,
           font = list(size = 18)
         ),
+        margin = list(t = 50),
         xaxis = list(
           title = "<b>Alcohol Consumption (%)</b>",
           titlefont = list(size = 14),
@@ -294,6 +298,7 @@ server <- function(input, output, session) {
     p %>%
       layout(
         title = paste("<b>", var_label, "Over Time</b>"),
+        margin = list(t = 50),
         xaxis = list(title = "<b>Year</b>"),
         yaxis = list(title = paste0("<b>", var_label, "</b>")),
         hovermode = "x unified",
@@ -350,6 +355,7 @@ server <- function(input, output, session) {
             )) %>%
       layout(
         title = "<b>Variable Correlations by Country</b>",
+        margin = list(t = 50),
         xaxis = list(title = "<b>Relationship</b>"),
         yaxis = list(title = "<b>Correlation Coefficient</b>", range = c(-1, 1)),
         barmode = 'group',
@@ -433,6 +439,7 @@ server <- function(input, output, session) {
       ) %>%
       layout(
         title = paste0("<b>Overweight Rate & Alcohol Consumption by Country (", input$compYear, ")</b>"),
+        margin = list(t = 50),
         xaxis = list(title = "<b>Country</b>"),
         yaxis = list(title = "<b>Percentage (%)</b>"),
         barmode = 'group',
