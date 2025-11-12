@@ -447,7 +447,7 @@ server <- function(input, output, session) {
         legend = list(
           orientation = "h",
           x = 0.5,
-          xanchor = "center",
+          xanchor = "center", 
           y = -0.2,
           yanchor = "top"
         )
