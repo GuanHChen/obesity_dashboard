@@ -18,9 +18,11 @@ ui <- fluidPage(
   # ")),
   
   div(
-    style = "background-color:#F2F2F2; padding:20px;",
-    titlePanel("Global Overweight, GDP, and Alcohol Consumption Visualization"),
-    # Space under title
+    style = "background-color: #F2F2F2; padding: 20px;",
+    tags$h1(
+      HTML("<b>Global Overweight, GDP, and Alcohol Consumption Visualization</b>"),
+      style = "font-size: 40px; margin-top: 20px;"
+    ),
     div(style = "margin-top: 20px;"),
     
     # Main display area
