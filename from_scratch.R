@@ -53,7 +53,7 @@ ui <- fluidPage(
     ),
   ),
   # Divider Bar
-  div(style = "height: 5px; background-color: #CCCCCC; width: 100%; margin-bottom: 30px;"),
+  div(style = "height: 6px; background-color: #CCCCCC; width: 100%; margin-bottom: 30px;"),
   # First row of plots
   fluidRow(
     column(6, plotlyOutput("bubble_plot", height = "500px")),
