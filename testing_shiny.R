@@ -6,7 +6,7 @@ library(scales)
 
 # --- Load data ---
 bmi_data <- read_csv("cleaned_merged_data.csv")
-gdp <- read_csv("merged_data_with_gdp.csv")
+gdp <- read_csv("merged_data_with_gdp.csv") 
 
 # --- UI ---
 ui <- fluidPage(
