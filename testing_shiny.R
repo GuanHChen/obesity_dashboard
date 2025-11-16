@@ -341,7 +341,7 @@ server <- function(input, output, session) {
     
     # Create grouped bar chart
     plot_ly(corr_by_country, 
-            x = ~Relationship, 
+            x = ~Relationship,  
             y = ~Correlation, 
             color = ~Location,
             colors = color_vector,
